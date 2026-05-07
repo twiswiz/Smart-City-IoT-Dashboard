@@ -34,6 +34,12 @@ Open `http://localhost:5173`.
 
 MongoDB is used when `MONGODB_URI` is available. If MongoDB is not running, the app falls back to in-memory storage so the demo can still run.
 
+Create a `.env` file from `.env.example` to configure the API. By default the simulator publishes one complete city snapshot every minute:
+
+```bash
+SIMULATION_INTERVAL_MS=60000
+```
+
 ## API
 
 - `POST /api/readings` ingest one sensor reading
