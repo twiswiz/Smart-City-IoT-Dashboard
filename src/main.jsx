@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
-  BarElement,
   CategoryScale,
   Chart as ChartJS,
   Filler,
@@ -12,12 +11,11 @@ import {
   TimeScale,
   Tooltip
 } from "chart.js";
-import { Bar, Line } from "react-chartjs-2";
+import { Line } from "react-chartjs-2";
 import { io } from "socket.io-client";
 import "./styles.css";
 
 ChartJS.register(
-  BarElement,
   CategoryScale,
   Filler,
   Legend,
@@ -32,48 +30,44 @@ const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 const socket = io(API_BASE, { transports: ["websocket", "polling"] });
 
 const metricLabels = {
-  trafficFlow: "Traffic Flow",
-  pm25: "PM2.5",
-  electricityKw: "Electricity",
+  trafficFlow: "Traffic",
+  pm25: "Air Quality",
+  electricityKw: "Power",
   waterLitres: "Water",
   noiseDb: "Noise"
 };
 
 const metricUnits = {
-  trafficFlow: "vehicles/hr",
-  pm25: "ug/m3",
+  trafficFlow: "veh/hr",
+  pm25: "µg/m³",
   electricityKw: "kW",
   waterLitres: "L/hr",
   noiseDb: "dB"
 };
 
-const metricMeta = {
-  trafficFlow: { icon: "route", tone: "cyan", label: "Transit" },
-  pm25: { icon: "wind", tone: "coral", label: "Air" },
-  electricityKw: { icon: "bolt", tone: "gold", label: "Power" },
-  waterLitres: { icon: "droplet", tone: "blue", label: "Water" },
-  noiseDb: { icon: "sound", tone: "violet", label: "Noise" }
-};
-
 const metricColors = {
-  trafficFlow: "#0f9fb8",
-  pm25: "#df4b3f",
-  electricityKw: "#c88713",
-  waterLitres: "#2876d1",
-  noiseDb: "#7052c8"
+  trafficFlow: "#0f766e",
+  pm25: "#b45309",
+  electricityKw: "#a16207",
+  waterLitres: "#1d4ed8",
+  noiseDb: "#7c3aed"
 };
 
-const rangeLabels = {
-  "1h": "1 hour",
-  "24h": "24 hours",
-  "7d": "7 days"
+const metricIcons = {
+  trafficFlow: "route",
+  pm25: "wind",
+  electricityKw: "bolt",
+  waterLitres: "droplet",
+  noiseDb: "sound"
 };
 
-const rangeShortLabels = {
-  "1h": "1H",
-  "24h": "24H",
-  "7d": "7D"
-};
+const rangeOptions = [
+  { value: "1h", label: "1H" },
+  { value: "24h", label: "24H" },
+  { value: "7d", label: "7D" }
+];
+
+const rangeFullLabels = { "1h": "Last hour", "24h": "Last 24 hours", "7d": "Last 7 days" };
 
 const iconPaths = {
   alert: (
@@ -84,84 +78,22 @@ const iconPaths = {
     </>
   ),
   bolt: <path d="M13 2 5 13h6l-2 9 8-12h-6l2-8Z" />,
-  chart: (
+  check: <path d="m5 12 5 5L20 7" />,
+  close: (
     <>
-      <path d="M4 19V5" />
-      <path d="M4 19h16" />
-      <path d="M8 15v-5" />
-      <path d="M12 15V7" />
-      <path d="M16 15v-3" />
-    </>
-  ),
-  city: (
-    <>
-      <path d="M3 21h18" />
-      <path d="M5 21V8l5-3v16" />
-      <path d="M14 21V4h5v17" />
-      <path d="M8 10h.01" />
-      <path d="M8 14h.01" />
-      <path d="M17 8h.01" />
-      <path d="M17 12h.01" />
-    </>
-  ),
-  clock: (
-    <>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 7v5l3 2" />
-    </>
-  ),
-  crosshair: (
-    <>
-      <circle cx="12" cy="12" r="8" />
-      <path d="M12 2v4" />
-      <path d="M12 18v4" />
-      <path d="M2 12h4" />
-      <path d="M18 12h4" />
-    </>
-  ),
-  database: (
-    <>
-      <ellipse cx="12" cy="5" rx="8" ry="3" />
-      <path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" />
-      <path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
     </>
   ),
   download: (
     <>
-      <path d="M12 3v11" />
-      <path d="m7 10 5 5 5-5" />
+      <path d="M12 3v12" />
+      <path d="m7 11 5 5 5-5" />
       <path d="M5 21h14" />
     </>
   ),
   droplet: <path d="M12 2.5S5 10 5 15a7 7 0 0 0 14 0c0-5-7-12.5-7-12.5Z" />,
-  file: (
-    <>
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
-      <path d="M14 2v6h6" />
-      <path d="M8 13h8" />
-      <path d="M8 17h5" />
-    </>
-  ),
-  filter: (
-    <>
-      <path d="M3 5h18" />
-      <path d="M6 12h12" />
-      <path d="M10 19h4" />
-    </>
-  ),
-  pulse: (
-    <>
-      <path d="M3 12h4l2-7 4 14 2-7h6" />
-    </>
-  ),
-  radar: (
-    <>
-      <path d="M12 12 20 4" />
-      <path d="M20.4 15a9 9 0 1 1-4-11.4" />
-      <path d="M16 12a4 4 0 1 1-4-4" />
-      <circle cx="12" cy="12" r="1" />
-    </>
-  ),
+  pulse: <path d="M3 12h4l2-7 4 14 2-7h6" />,
   refresh: (
     <>
       <path d="M20 12a8 8 0 1 1-2.3-5.7" />
@@ -176,32 +108,11 @@ const iconPaths = {
       <path d="m13 7 2-2-2-2" />
     </>
   ),
-  shield: (
-    <>
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
-      <path d="m9 12 2 2 4-5" />
-    </>
-  ),
   sound: (
     <>
       <path d="M4 9v6h4l5 4V5L8 9Z" />
       <path d="M17 9.5a4 4 0 0 1 0 5" />
       <path d="M20 7a8 8 0 0 1 0 10" />
-    </>
-  ),
-  table: (
-    <>
-      <path d="M4 5h16v14H4z" />
-      <path d="M4 10h16" />
-      <path d="M10 5v14" />
-    </>
-  ),
-  users: (
-    <>
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.9" />
-      <path d="M16 3.1a4 4 0 0 1 0 7.8" />
     </>
   ),
   wind: (
@@ -213,7 +124,7 @@ const iconPaths = {
   )
 };
 
-function Icon({ name, size = 18 }) {
+function Icon({ name, size = 16 }) {
   return (
     <svg
       aria-hidden="true"
@@ -237,7 +148,7 @@ function compactNumber(value) {
 }
 
 function formatValue(value) {
-  if (value === undefined || value === null || Number.isNaN(value)) return "--";
+  if (value === undefined || value === null || Number.isNaN(value)) return "—";
   return Intl.NumberFormat("en", { maximumFractionDigits: value > 1000 ? 0 : 1 }).format(value);
 }
 
@@ -245,45 +156,79 @@ function timeLabel(date) {
   return new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function dateTimeLabel(date) {
-  if (!date) return "Waiting for telemetry";
-  return new Date(date).toLocaleString([], {
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "short"
-  });
+function timeAgo(date) {
+  if (!date) return "—";
+  const diff = (Date.now() - new Date(date).getTime()) / 1000;
+  if (diff < 60) return `${Math.round(diff)}s ago`;
+  if (diff < 3600) return `${Math.round(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.round(diff / 3600)}h ago`;
+  return `${Math.round(diff / 86400)}d ago`;
 }
 
-function ratioStatus(ratio) {
-  if (!Number.isFinite(ratio)) return { label: "No data", tone: "idle" };
-  if (ratio >= 1.25) return { label: "Critical", tone: "critical" };
-  if (ratio >= 1) return { label: "Watch", tone: "watch" };
-  if (ratio >= 0.82) return { label: "Elevated", tone: "elevated" };
-  return { label: "Clear", tone: "clear" };
+function ratioTone(ratio) {
+  if (!Number.isFinite(ratio)) return "idle";
+  if (ratio >= 1.2) return "critical";
+  if (ratio >= 1) return "warning";
+  if (ratio >= 0.85) return "elevated";
+  return "ok";
+}
+
+function ratioLabel(tone) {
+  return { critical: "Critical", warning: "Watch", elevated: "Elevated", ok: "Nominal", idle: "—" }[tone];
 }
 
 function healthTone(score) {
-  if (score >= 84) return "clear";
+  if (score >= 84) return "ok";
   if (score >= 70) return "elevated";
-  if (score >= 56) return "watch";
+  if (score >= 56) return "warning";
   return "critical";
-}
-
-function metricDelta(current, previous) {
-  if (!current || !previous) return { label: "baseline", direction: "flat" };
-  const change = current.value - previous.value;
-  if (Math.abs(change) < 0.5) return { label: "steady", direction: "flat" };
-  return {
-    label: `${change > 0 ? "+" : ""}${formatValue(change)}`,
-    direction: change > 0 ? "up" : "down"
-  };
 }
 
 async function getJson(path) {
   const response = await fetch(`${API_BASE}${path}`);
   if (!response.ok) throw new Error(`Request failed: ${path}`);
   return response.json();
+}
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function Sparkline({ values, color, height = 24 }) {
+  if (!values || values.length < 2) {
+    return <div className="sparkline empty" style={{ height }} />;
+  }
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const points = values
+    .map((v, i) => {
+      const x = (i / (values.length - 1)) * 100;
+      const y = 100 - ((v - min) / span) * 100;
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    })
+    .join(" ");
+  return (
+    <svg
+      aria-hidden="true"
+      className="sparkline"
+      preserveAspectRatio="none"
+      style={{ height }}
+      viewBox="0 0 100 100"
+    >
+      <polyline
+        fill="none"
+        points={points}
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
 }
 
 function App() {
@@ -297,19 +242,22 @@ function App() {
   const [loadStatus, setLoadStatus] = useState("loading");
   const [loadError, setLoadError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const [latestAlert, setLatestAlert] = useState(null);
 
   useEffect(() => {
     let active = true;
+    setRefreshing(true);
 
     async function loadInitialData() {
-      setLoadStatus("loading");
+      setLoadStatus((prev) => (prev === "ready" ? "ready" : "loading"));
       setLoadError("");
 
       try {
         const [zoneData, readingData, alertData] = await Promise.all([
           getJson("/api/zones"),
-          getJson(`/api/readings?range=${range}&limit=320`),
-          getJson(`/api/alerts?range=${range}&limit=120`)
+          getJson(`/api/readings?range=${range}&limit=4000`),
+          getJson(`/api/alerts?range=${range}&limit=200`)
         ]);
 
         if (!active) return;
@@ -322,11 +270,12 @@ function App() {
         console.error(error);
         setLoadError("Telemetry services are not responding. Check the API process and retry.");
         setLoadStatus("error");
+      } finally {
+        if (active) setRefreshing(false);
       }
     }
 
     loadInitialData();
-
     return () => {
       active = false;
     };
@@ -334,10 +283,11 @@ function App() {
 
   useEffect(() => {
     const handleReading = (reading) => {
-      setReadings((current) => [...current.slice(-399), reading]);
+      setReadings((current) => [...current.slice(-4999), reading]);
     };
     const handleAlert = (alert) => {
-      setAlerts((current) => [alert, ...current.slice(0, 119)]);
+      setAlerts((current) => [alert, ...current.slice(0, 199)]);
+      setLatestAlert(alert);
     };
     const handleConnect = () => setConnected(true);
     const handleDisconnect = () => setConnected(false);
@@ -356,141 +306,162 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!latestAlert) return undefined;
+    const timer = window.setTimeout(() => setLatestAlert(null), 7000);
+    return () => window.clearTimeout(timer);
+  }, [latestAlert]);
+
   const zoneById = useMemo(() => new Map(zones.map((zone) => [zone.id, zone])), [zones]);
   const activeZone = selectedZone === "all" ? null : zoneById.get(selectedZone);
-  const zoneLabel = activeZone?.name || "All districts";
+  const zoneLabel = activeZone?.name || "All cities";
 
   const scopedReadings = useMemo(
-    () => readings.filter((reading) => selectedZone === "all" || reading.zoneId === selectedZone),
+    () => readings.filter((r) => selectedZone === "all" || r.zoneId === selectedZone),
     [readings, selectedZone]
   );
 
   const latestByMetric = useMemo(() => {
-    const latest = {};
-    scopedReadings.forEach((reading) => {
-      latest[reading.metric] = reading;
+    const out = {};
+    scopedReadings.forEach((r) => {
+      out[r.metric] = r;
     });
-    return latest;
+    return out;
   }, [scopedReadings]);
 
-  const previousByMetric = useMemo(() => {
-    const grouped = {};
-    scopedReadings.forEach((reading) => {
-      grouped[reading.metric] = grouped[reading.metric] ? [...grouped[reading.metric], reading].slice(-2) : [reading];
+  const sparkByMetric = useMemo(() => {
+    const out = {};
+    Object.keys(metricLabels).forEach((m) => {
+      out[m] = scopedReadings.filter((r) => r.metric === m).slice(-40).map((r) => r.value);
     });
-    return Object.fromEntries(Object.entries(grouped).map(([metric, values]) => [metric, values.at(-2)]));
+    return out;
   }, [scopedReadings]);
 
   const latestByZoneMetric = useMemo(() => {
     const latest = new Map();
-    readings.forEach((reading) => {
-      latest.set(`${reading.zoneId}:${reading.metric}`, reading);
+    readings.forEach((r) => {
+      latest.set(`${r.zoneId}:${r.metric}`, r);
     });
     return latest;
   }, [readings]);
 
   const thresholdsByMetric = useMemo(() => {
     if (activeZone) return activeZone.thresholds || {};
-
-    return Object.keys(metricLabels).reduce((thresholds, metric) => {
-      const values = zones.map((zone) => zone.thresholds?.[metric]).filter(Boolean);
-      thresholds[metric] = values.reduce((sum, value) => sum + value, 0) / (values.length || 1);
-      return thresholds;
+    return Object.keys(metricLabels).reduce((acc, m) => {
+      const values = zones.map((z) => z.thresholds?.[m]).filter(Boolean);
+      acc[m] = values.reduce((s, v) => s + v, 0) / (values.length || 1);
+      return acc;
     }, {});
   }, [activeZone, zones]);
 
   const selectedMetricReadings = useMemo(
-    () => scopedReadings.filter((reading) => reading.metric === selectedMetric).slice(-110),
+    () => scopedReadings.filter((r) => r.metric === selectedMetric).slice(-110),
     [scopedReadings, selectedMetric]
   );
 
   const activeAlerts = useMemo(
-    () => alerts.filter((alert) => selectedZone === "all" || alert.zoneId === selectedZone),
+    () => alerts.filter((a) => selectedZone === "all" || a.zoneId === selectedZone),
     [alerts, selectedZone]
   );
 
   const zoneSnapshots = useMemo(() => {
     return zones.map((zone) => {
-      const zoneAlerts = alerts.filter((alert) => alert.zoneId === zone.id);
-      const critical = zoneAlerts.filter((alert) => alert.severity === "critical").length;
+      const zoneAlerts = alerts.filter((a) => a.zoneId === zone.id);
+      const critical = zoneAlerts.filter((a) => a.severity === "critical").length;
       const watch = zoneAlerts.length - critical;
-      const overloaded = Object.keys(metricLabels).filter((metric) => {
-        const reading = latestByZoneMetric.get(`${zone.id}:${metric}`);
-        const threshold = zone.thresholds?.[metric];
-        return reading && threshold && reading.value >= threshold;
-      }).length;
-      const score = Math.max(32, 100 - critical * 13 - watch * 7 - overloaded * 9);
 
-      return {
-        ...zone,
-        critical,
-        watch,
-        alerts: zoneAlerts.length,
-        overloaded,
-        score,
-        tone: healthTone(score)
-      };
+      // Score driven by actual current threshold ratios so each city differs meaningfully.
+      // ratio 0.5 → ~81pts  |  ratio 0.8 → ~70pts  |  ratio 1.0 → ~62pts  |  ratio 1.2 → ~54pts
+      const metricScores = Object.keys(metricLabels).map((m) => {
+        const r = latestByZoneMetric.get(`${zone.id}:${m}`);
+        const t = zone.thresholds?.[m];
+        if (!r || !t) return 72; // neutral when no data yet
+        return Math.max(10, Math.round(100 - (r.value / t) * 38));
+      });
+      const base = Math.round(metricScores.reduce((s, v) => s + v, 0) / metricScores.length);
+      const alertPenalty = Math.min(22, critical * 4 + Math.min(8, watch));
+      const overloaded = Object.keys(metricLabels).filter((m) => {
+        const r = latestByZoneMetric.get(`${zone.id}:${m}`);
+        const t = zone.thresholds?.[m];
+        return r && t && r.value >= t;
+      }).length;
+      const score = Math.max(15, base - alertPenalty);
+      return { ...zone, critical, watch, alerts: zoneAlerts.length, overloaded, score, tone: healthTone(score) };
     });
   }, [alerts, latestByZoneMetric, zones]);
 
   const metricSnapshots = useMemo(() => {
     return Object.entries(metricLabels).map(([metric, label]) => {
       const latest = latestByMetric[metric];
-      const previous = previousByMetric[metric];
       const threshold = thresholdsByMetric[metric];
       const ratio = latest?.value / threshold;
-      const status = ratioStatus(ratio);
-      const delta = metricDelta(latest, previous);
-
+      const tone = ratioTone(ratio);
       return {
         metric,
         label,
         latest,
         threshold,
         ratio,
-        status,
-        delta,
+        tone,
         unit: metricUnits[metric],
         color: metricColors[metric],
-        meta: metricMeta[metric],
-        percent: Number.isFinite(ratio) ? Math.min(100, Math.round(ratio * 100)) : 0
+        icon: metricIcons[metric],
+        spark: sparkByMetric[metric] || [],
+        percent: Number.isFinite(ratio) ? Math.round(ratio * 100) : 0
       };
     });
-  }, [latestByMetric, previousByMetric, thresholdsByMetric]);
+  }, [latestByMetric, thresholdsByMetric, sparkByMetric]);
 
-  const selectedSnapshot = metricSnapshots.find((snapshot) => snapshot.metric === selectedMetric) || metricSnapshots[0];
+  const selectedSnapshot = metricSnapshots.find((s) => s.metric === selectedMetric) || metricSnapshots[0];
+  const selectedThresholdValue = selectedSnapshot?.threshold;
+  const breachCount = selectedMetricReadings.filter((r) => {
+    const t = activeZone?.thresholds?.[selectedMetric] || zoneById.get(r.zoneId)?.thresholds?.[selectedMetric] || selectedThresholdValue;
+    return t && r.value > t;
+  }).length;
+
   const averageHealth = zoneSnapshots.length
-    ? Math.round(zoneSnapshots.reduce((sum, zone) => sum + zone.score, 0) / zoneSnapshots.length)
+    ? Math.round(zoneSnapshots.reduce((s, z) => s + z.score, 0) / zoneSnapshots.length)
     : 0;
-  const criticalCount = activeAlerts.filter((alert) => alert.severity === "critical").length;
+  const criticalCount = activeAlerts.filter((a) => a.severity === "critical").length;
   const monitoredPopulation = activeZone
     ? activeZone.population
-    : zones.reduce((sum, zone) => sum + (zone.population || 0), 0);
+    : zones.reduce((s, z) => s + (z.population || 0), 0);
   const latestReadingAt = scopedReadings.at(-1)?.recordedAt;
-  const totalSensors = new Set(scopedReadings.map((reading) => reading.sensorId)).size || zones.length * 5;
-  const riskZones = zoneSnapshots.filter((zone) => zone.tone === "critical" || zone.tone === "watch").length;
+  const totalSensors = new Set(scopedReadings.map((r) => r.sensorId)).size || zones.length * 5;
   const sortedZones = [...zoneSnapshots].sort((a, b) => a.score - b.score);
 
+  const activeColor = metricColors[selectedMetric];
+
   const lineData = {
-    labels: selectedMetricReadings.map((reading) => timeLabel(reading.recordedAt)),
+    labels: selectedMetricReadings.map((r) => timeLabel(r.recordedAt)),
     datasets: [
       {
         label: metricLabels[selectedMetric],
-        data: selectedMetricReadings.map((reading) => reading.value),
-        borderColor: metricColors[selectedMetric],
-        backgroundColor: `${metricColors[selectedMetric]}24`,
+        data: selectedMetricReadings.map((r) => r.value),
+        borderColor: activeColor,
+        backgroundColor: (context) => {
+          const { chart } = context;
+          const { ctx, chartArea } = chart;
+          if (!chartArea) return hexToRgba(activeColor, 0.12);
+          const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+          gradient.addColorStop(0, hexToRgba(activeColor, 0.22));
+          gradient.addColorStop(0.65, hexToRgba(activeColor, 0.06));
+          gradient.addColorStop(1, hexToRgba(activeColor, 0.0));
+          return gradient;
+        },
         pointRadius: 0,
-        borderWidth: 3,
-        tension: 0.38,
-        fill: true
+        pointHoverRadius: 5,
+        borderWidth: 2.5,
+        tension: 0.4,
+        fill: "start"
       },
-      ...(selectedSnapshot?.threshold
+      ...(selectedThresholdValue
         ? [
             {
               label: "Threshold",
-              data: selectedMetricReadings.map(() => selectedSnapshot.threshold),
-              borderColor: "#8c8173",
-              borderDash: [8, 8],
+              data: selectedMetricReadings.map(() => selectedThresholdValue),
+              borderColor: "#64748b",
+              borderDash: [6, 4],
               pointRadius: 0,
               borderWidth: 2,
               fill: false
@@ -500,415 +471,394 @@ function App() {
     ]
   };
 
-  const healthData = {
-    labels: zoneSnapshots.map((zone) => zone.name.replace(" District", "")),
-    datasets: [
-      {
-        label: "Health",
-        data: zoneSnapshots.map((zone) => zone.score),
-        backgroundColor: zoneSnapshots.map((zone) => zone.color),
-        borderRadius: 4,
-        borderSkipped: false
+  const reportQuery = `zoneId=${selectedZone}&range=${range}`;
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    layout: { padding: { top: 6, bottom: 0, left: 0, right: 4 } },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        mode: "index",
+        intersect: false,
+        backgroundColor: "#1e293b",
+        titleColor: "#f8fafc",
+        bodyColor: "#cbd5e1",
+        borderWidth: 0,
+        padding: 12,
+        displayColors: true,
+        boxWidth: 10,
+        boxHeight: 10
       }
-    ]
+    },
+    interaction: { mode: "nearest", intersect: false },
+    scales: {
+      x: {
+        ticks: {
+          color: "#94a3b8",
+          maxTicksLimit: 7,
+          font: { size: 11, family: "Inter" },
+          maxRotation: 0
+        },
+        grid: { display: false },
+        border: { display: false }
+      },
+      y: {
+        beginAtZero: false,
+        grace: "8%",
+        ticks: {
+          color: "#94a3b8",
+          maxTicksLimit: 5,
+          font: { size: 11, family: "JetBrains Mono" },
+          padding: 8
+        },
+        grid: {
+          color: "rgba(15, 23, 42, 0.07)",
+          drawTicks: false
+        },
+        border: { display: false }
+      }
+    }
   };
 
-  const reportQuery = `zoneId=${selectedZone}&range=${range}`;
-  const gaugeValue = selectedSnapshot?.percent || 0;
-
   return (
-    <div className="city-desk">
-      <a className="skip-link" href="#content">
-        Skip to dashboard
-      </a>
+    <div className="app">
+      <a className="skip-link" href="#main">Skip to dashboard</a>
 
-      <header className="command-header">
-        <a className="brand" href="#content" aria-label="Smart City dashboard home">
-          <span className="brand-symbol" aria-hidden="true">
-            <Icon name="city" size={24} />
+      {latestAlert && (
+        <div className={`toast toast-${latestAlert.severity}`} role="status" aria-live="polite">
+          <span className="toast-glyph"><Icon name="alert" /></span>
+          <div className="toast-body">
+            <div className="toast-title">
+              {latestAlert.severity === "critical" ? "Critical breach" : "Threshold watch"}
+            </div>
+            <div className="toast-message">{latestAlert.message}</div>
+            <div className="toast-meta">
+              <span className="mono">{formatValue(latestAlert.value)}</span>
+              <span className="dot" />
+              <span>limit {formatValue(latestAlert.threshold)}</span>
+            </div>
+          </div>
+          <button
+            className="icon-btn ghost"
+            aria-label="Dismiss notification"
+            onClick={() => setLatestAlert(null)}
+            type="button"
+          >
+            <Icon name="close" size={14} />
+          </button>
+        </div>
+      )}
+
+      <header className="topbar">
+        <div className="brand-text">
+          <div className="brand-name">UrbanSignal</div>
+          <div className="brand-tag">IoT Operations</div>
+        </div>
+
+        <div className="topbar-status">
+          <span className={`live-indicator ${connected ? "online" : "offline"}`}>
+            <span className="pulse" />
+            {connected ? "Live" : "Stored"}
           </span>
-          <span>
-            <strong>UrbanSignal</strong>
-            <small>IoT Operations</small>
-          </span>
-        </a>
+          <span className="status-meta">{rangeFullLabels[range]}</span>
+          {latestReadingAt && (
+            <span className="status-meta mono">{timeAgo(latestReadingAt)}</span>
+          )}
+        </div>
 
-        <nav className="command-nav" aria-label="Dashboard sections">
-          <a href="#signals">Signals</a>
-          <a href="#districts">Districts</a>
-          <a href="#matrix">Matrix</a>
-          <a href="#events">Events</a>
-        </nav>
+        <div className="topbar-actions">
+          <div className="range-group" role="group" aria-label="Time range">
+            {rangeOptions.map((r) => (
+              <button
+                key={r.value}
+                aria-pressed={range === r.value}
+                className={range === r.value ? "active" : ""}
+                onClick={() => setRange(r.value)}
+                type="button"
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
 
-        <div className="command-actions">
-          <a className="action-link" href={`${API_BASE}/api/reports/compliance?${reportQuery}`} target="_blank">
-            <Icon name="file" /> JSON
-          </a>
-          <a className="action-link primary" href={`${API_BASE}/api/reports/compliance.csv?${reportQuery}`}>
-            <Icon name="download" /> CSV
+          <button
+            className={`icon-btn ${refreshing ? "spinning" : ""}`}
+            aria-label="Refresh telemetry"
+            onClick={() => setRefreshKey((k) => k + 1)}
+            type="button"
+          >
+            <Icon name="refresh" />
+          </button>
+
+          <a
+            className="btn btn-primary"
+            href={`${API_BASE}/api/reports/compliance.csv?${reportQuery}`}
+          >
+            <Icon name="download" /> Export CSV
           </a>
         </div>
       </header>
 
-      <main className="command-center" id="content">
-        <section className="mission-grid" aria-label="Mission overview">
-          <article className="mission-control">
-            <div className="section-kicker">
-              <span>Command Scope</span>
-              <strong className={`telemetry-status ${connected ? "online" : ""}`}>
-                <i aria-hidden="true" />
-                {connected ? "Live feed" : "Stored data"} / {dateTimeLabel(latestReadingAt)}
-              </strong>
-            </div>
-
-            <div className="mission-title">
-              <p>Smart City IoT Dashboard</p>
-              <h1>{zoneLabel} telemetry, risk, and compliance in one operating view.</h1>
-            </div>
-
-            <div className="scope-controls" aria-label="Dashboard filters">
-              <label>
-                District
-                <select value={selectedZone} onChange={(event) => setSelectedZone(event.target.value)}>
-                  <option value="all">All districts</option>
-                  {zones.map((zone) => (
-                    <option key={zone.id} value={zone.id}>
-                      {zone.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                Primary signal
-                <select value={selectedMetric} onChange={(event) => setSelectedMetric(event.target.value)}>
-                  {metricSnapshots.map((snapshot) => (
-                    <option key={snapshot.metric} value={snapshot.metric}>
-                      {snapshot.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <div className="range-tabs" role="group" aria-label="History range">
-                {Object.entries(rangeShortLabels).map(([value, label]) => (
-                  <button
-                    aria-pressed={range === value}
-                    className={range === value ? "selected" : ""}
-                    key={value}
-                    onClick={() => setRange(value)}
-                    type="button"
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              <button className="refresh-button" onClick={() => setRefreshKey((current) => current + 1)} type="button">
-                <Icon name="refresh" /> Refresh
-              </button>
-            </div>
-
+      <main className="main" id="main">
+        <section className="hero">
+          <div className="hero-left">
+            <div className="hero-eyebrow">India · {zones.length || 8} metro cities</div>
+            <h1 className="hero-title">{zoneLabel}</h1>
             {loadError && (
-              <div className="error-strip" role="alert">
+              <div className="banner-error" role="alert">
                 <Icon name="alert" />
                 <span>{loadError}</span>
-                <button onClick={() => setRefreshKey((current) => current + 1)} type="button">
-                  Retry
-                </button>
+                <button onClick={() => setRefreshKey((k) => k + 1)} type="button">Retry</button>
               </div>
             )}
+          </div>
 
-            <div className="readout-row">
-              <div
-                className={`signal-gauge tone-${selectedSnapshot?.meta.tone || "cyan"}`}
-                style={{ "--gauge-value": `${gaugeValue}%` }}
-                aria-label={`${selectedSnapshot?.label} is at ${gaugeValue}% of threshold`}
-              >
-                <span>{gaugeValue}</span>
-                <small>% of limit</small>
-              </div>
-
-              <div className="hero-readout">
-                <span className={`state-badge ${selectedSnapshot?.status.tone}`}>{selectedSnapshot?.status.label}</span>
-                <h2>{selectedSnapshot?.label}</h2>
-                <p>
-                  <strong>{formatValue(selectedSnapshot?.latest?.value)}</strong>
-                  <span>{selectedSnapshot?.unit}</span>
-                </p>
-                <dl>
-                  <div>
-                    <dt>Limit</dt>
-                    <dd>{formatValue(selectedSnapshot?.threshold)}</dd>
-                  </div>
-                  <div>
-                    <dt>Delta</dt>
-                    <dd className={selectedSnapshot?.delta.direction}>{selectedSnapshot?.delta.label}</dd>
-                  </div>
-                  <div>
-                    <dt>Samples</dt>
-                    <dd>{selectedMetricReadings.length}</dd>
-                  </div>
-                </dl>
+          <div className="hero-stats">
+            <div className="stat">
+              <div className="stat-label">Network health</div>
+              <div className="stat-value mono">{averageHealth || "—"}<span className="stat-unit">%</span></div>
+              <div className={`stat-foot tone-${healthTone(averageHealth)}`}>
+                {ratioLabel(healthTone(averageHealth)) || "—"}
               </div>
             </div>
-          </article>
-
-          <article className="operations-summary" aria-label="Operating summary">
-            <div className="summary-top">
-              <span className="summary-icon" aria-hidden="true">
-                <Icon name="radar" size={22} />
-              </span>
-              <div>
-                <p>Operations posture</p>
-                <strong>{averageHealth || "--"}%</strong>
-              </div>
+            <div className="stat">
+              <div className="stat-label">Active alerts</div>
+              <div className="stat-value mono">{activeAlerts.length}</div>
+              <div className={`stat-foot ${criticalCount > 0 ? "tone-critical" : ""}`}>{criticalCount} critical</div>
             </div>
-
-            <div className="summary-list">
-              <div>
-                <span>Active alerts</span>
-                <strong>{activeAlerts.length}</strong>
-                <small>{criticalCount} critical</small>
-              </div>
-              <div>
-                <span>Sensors</span>
-                <strong>{totalSensors}</strong>
-                <small>{connected ? "live feed" : "stored data"}</small>
-              </div>
-              <div>
-                <span>Population</span>
-                <strong>{compactNumber(monitoredPopulation)}</strong>
-                <small>{zoneLabel}</small>
-              </div>
-              <div>
-                <span>Risk zones</span>
-                <strong>{riskZones}</strong>
-                <small>{rangeLabels[range]}</small>
-              </div>
+            <div className="stat">
+              <div className="stat-label">Sensors</div>
+              <div className="stat-value mono">{totalSensors}</div>
+              <div className="stat-foot">{connected ? "live feed" : "stored"}</div>
             </div>
-          </article>
+            <div className="stat">
+              <div className="stat-label">Population</div>
+              <div className="stat-value mono">{compactNumber(monitoredPopulation)}</div>
+              <div className="stat-foot">{zoneLabel}</div>
+            </div>
+          </div>
         </section>
 
-        <section className="signal-strip" id="signals" aria-label="Signal selector">
-          {metricSnapshots.map((snapshot) => (
+        <section className="kpi-strip" aria-label="Metric overview">
+          {metricSnapshots.map((s) => (
             <button
-              aria-pressed={selectedMetric === snapshot.metric}
-              className={`signal-chip tone-${snapshot.meta.tone}`}
-              key={snapshot.metric}
-              onClick={() => setSelectedMetric(snapshot.metric)}
+              key={s.metric}
               type="button"
+              className={`kpi-tile tone-${s.tone} ${selectedMetric === s.metric ? "active" : ""}`}
+              aria-pressed={selectedMetric === s.metric}
+              onClick={() => setSelectedMetric(s.metric)}
+              style={{ "--tile-accent": s.color }}
             >
-              <span className="chip-icon" aria-hidden="true">
-                <Icon name={snapshot.meta.icon} />
-              </span>
-              <span>
-                <small>{snapshot.meta.label}</small>
-                <strong>{snapshot.label}</strong>
-              </span>
-              <em className={snapshot.status.tone}>{snapshot.status.label}</em>
-              <b>{formatValue(snapshot.latest?.value)}</b>
+              <div className="kpi-head">
+                <span className="kpi-icon" aria-hidden="true"><Icon name={s.icon} /></span>
+                <span className="kpi-label">{s.label}</span>
+                <span className={`pill pill-${s.tone}`}>{ratioLabel(s.tone)}</span>
+              </div>
+              <div className="kpi-value">
+                <span className="mono">{formatValue(s.latest?.value)}</span>
+                <span className="kpi-unit">{s.unit}</span>
+              </div>
+              <div className="kpi-foot">
+                <span className="kpi-threshold mono">{Number.isFinite(s.percent) ? s.percent : 0}%</span>
+                <span className="kpi-threshold-label">of limit</span>
+                <Sparkline values={s.spark} color={s.color} />
+              </div>
             </button>
           ))}
         </section>
 
-        <section className="analysis-grid">
-          <article className="surface trend-surface">
-            <div className="surface-header">
-              <div>
-                <span className="section-label">
-                  <Icon name="pulse" /> Signal analysis
-                </span>
-                <h2>{selectedSnapshot?.label} trend</h2>
+        <section className="bento">
+          <article className="card card-controls">
+            <div className="card-eyebrow"><Icon name="route" /> View</div>
+            <div className="controls-body">
+              <div className="select-wrap">
+                <label htmlFor="zone-select">City</label>
+                <select
+                  id="zone-select"
+                  value={selectedZone}
+                  onChange={(e) => setSelectedZone(e.target.value)}
+                >
+                  <option value="all">All cities</option>
+                  {zones.map((z) => (
+                    <option key={z.id} value={z.id}>
+                      {z.name}{z.state ? ` — ${z.state}` : ""}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div className="chart-legend" aria-label="Chart legend">
-                <span style={{ "--legend-color": selectedSnapshot?.color }} />
-                <b>{selectedSnapshot?.label}</b>
-                <span className="dash" />
-                <b>Threshold</b>
+              <div className="select-wrap">
+                <label htmlFor="metric-select">Signal</label>
+                <select
+                  id="metric-select"
+                  value={selectedMetric}
+                  onChange={(e) => setSelectedMetric(e.target.value)}
+                >
+                  {Object.entries(metricLabels).map(([k, v]) => (
+                    <option key={k} value={k}>{v}</option>
+                  ))}
+                </select>
               </div>
-            </div>
-
-            <div className="trend-layout">
-              <div
-                aria-label={`${selectedSnapshot?.label} line chart for ${zoneLabel}`}
-                className="chart-stage"
-                role="img"
-              >
-                {loadStatus === "loading" && <div className="loading-panel">Loading telemetry...</div>}
-                {loadStatus !== "loading" && selectedMetricReadings.length === 0 && (
-                  <div className="loading-panel">No readings available for this scope.</div>
-                )}
-                <Line
-                  data={lineData}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { display: false },
-                      tooltip: { mode: "index", intersect: false }
-                    },
-                    interaction: { mode: "nearest", intersect: false },
-                    scales: {
-                      x: {
-                        ticks: { color: "#64748b", maxTicksLimit: 8, font: { size: 11 } },
-                        grid: { display: false }
-                      },
-                      y: {
-                        ticks: { color: "#64748b", font: { size: 11 } },
-                        grid: { color: "rgba(100, 116, 139, 0.16)" }
-                      }
-                    }
-                  }}
-                />
-              </div>
-
-              <div className="reading-table" aria-label="Latest signal details">
-                <div>
-                  <span>Signal</span>
-                  <strong>{selectedSnapshot?.label}</strong>
+              {selectedSnapshot && (
+                <div className="ctrl-snapshot">
+                  <div className="ctrl-snap-label">{selectedSnapshot.label}</div>
+                  <div className="ctrl-snap-value mono" style={{ color: selectedSnapshot.color }}>
+                    {formatValue(selectedSnapshot.latest?.value)}
+                    <span className="ctrl-snap-unit">{selectedSnapshot.unit}</span>
+                  </div>
+                  <div className="ctrl-snap-sub">
+                    <span className={`pill pill-${selectedSnapshot.tone}`}>{ratioLabel(selectedSnapshot.tone)}</span>
+                    <span className="ctrl-snap-pct mono">{selectedSnapshot.percent}% of limit</span>
+                  </div>
+                  <Sparkline values={selectedSnapshot.spark} color={selectedSnapshot.color} height={36} />
                 </div>
-                <div>
-                  <span>Latest</span>
-                  <strong>{formatValue(selectedSnapshot?.latest?.value)} {selectedSnapshot?.unit}</strong>
-                </div>
-                <div>
-                  <span>Threshold</span>
-                  <strong>{formatValue(selectedSnapshot?.threshold)} {selectedSnapshot?.unit}</strong>
-                </div>
-                <div>
-                  <span>Last sample</span>
-                  <strong>{dateTimeLabel(selectedSnapshot?.latest?.recordedAt)}</strong>
-                </div>
-              </div>
+              )}
             </div>
           </article>
 
-          <article className="surface districts-surface" id="districts">
-            <div className="surface-header">
+          <article className="card card-trend">
+            <header className="card-header">
               <div>
-                <span className="section-label">
-                  <Icon name="crosshair" /> District priority
+                <div className="card-eyebrow"><Icon name="pulse" /> Trend</div>
+                <h2 className="card-title">{selectedSnapshot?.label} · {zoneLabel}</h2>
+              </div>
+              <div className="legend">
+                <span className="legend-item">
+                  <span className="legend-swatch" style={{ background: selectedSnapshot?.color }} />
+                  {selectedSnapshot?.label}
                 </span>
-                <h2>Health ranking</h2>
+                <span className="legend-item muted">
+                  <span className="legend-swatch dashed" />
+                  Threshold
+                </span>
+                {breachCount > 0 && <span className="legend-breach">{breachCount} breaches</span>}
               </div>
+            </header>
+            <div className="chart-frame">
+              {loadStatus === "loading" && <div className="state-overlay"><div className="skeleton-bar" /></div>}
+              {loadStatus !== "loading" && selectedMetricReadings.length === 0 && (
+                <div className="state-overlay empty">No readings in this scope.</div>
+              )}
+              <Line data={lineData} options={chartOptions} />
             </div>
+          </article>
 
-            <div className="district-layout">
-              <div className="city-map">
-                <svg aria-hidden="true" className="city-lines" viewBox="0 0 600 360">
-                  <path d="M40 260 C150 180 245 205 340 110 S515 90 560 42" />
-                  <path d="M80 70 C120 165 206 198 288 230 S435 285 540 234" />
-                  <path d="M292 24 L316 330" />
-                  <path d="M40 176 L560 176" />
-                  <rect x="62" y="44" width="92" height="64" rx="8" />
-                  <rect x="414" y="54" width="104" height="76" rx="8" />
-                  <rect x="86" y="238" width="126" height="64" rx="8" />
-                  <rect x="364" y="222" width="120" height="76" rx="8" />
-                </svg>
-                {zoneSnapshots.map((zone) => (
-                  <button
-                    aria-label={`${zone.name}: ${Math.round(zone.score)}% health, ${zone.alerts} alerts`}
-                    aria-pressed={selectedZone === zone.id}
-                    className={`map-node tone-${zone.tone}`}
-                    key={zone.id}
-                    onClick={() => setSelectedZone(zone.id)}
-                    style={{ left: `${zone.position.x}%`, top: `${zone.position.y}%`, "--zone-color": zone.color }}
-                    type="button"
-                  >
-                    <span>{zone.alerts}</span>
-                  </button>
-                ))}
+          <article className="card card-rank">
+            <header className="card-header">
+              <div>
+                <div className="card-eyebrow"><Icon name="route" /> Ranking</div>
+                <h2 className="card-title">City stress score</h2>
               </div>
-
-              <div className="district-rank">
-                {sortedZones.map((zone) => (
+              <span className="card-meta">Lowest first</span>
+            </header>
+            <ul className="rank-list">
+              {sortedZones.map((zone, index) => (
+                <li key={zone.id}>
                   <button
-                    aria-pressed={selectedZone === zone.id}
-                    className={`district-row tone-${zone.tone}`}
-                    key={zone.id}
-                    onClick={() => setSelectedZone(zone.id)}
                     type="button"
+                    className={`rank-row tone-${zone.tone} ${selectedZone === zone.id ? "selected" : ""}`}
+                    aria-pressed={selectedZone === zone.id}
+                    onClick={() => setSelectedZone(zone.id === selectedZone ? "all" : zone.id)}
                   >
-                    <span className="district-dot" style={{ background: zone.color }} aria-hidden="true" />
-                    <span>
-                      <strong>{zone.name}</strong>
-                      <small>{zone.type} / {compactNumber(zone.population)} people</small>
+                    <span className="rank-index mono">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="rank-body">
+                      <span className="rank-name">{zone.name}</span>
+                      <span className="rank-sub">
+                        {zone.state || zone.type} · {compactNumber(zone.population)} ppl · {zone.alerts} alerts
+                      </span>
                     </span>
-                    <em>{Math.round(zone.score)}%</em>
+                    <span className="rank-bar" aria-hidden="true">
+                      <span className="rank-bar-fill" style={{ width: `${zone.score}%` }} />
+                    </span>
+                    <span className="rank-score mono">{Math.round(zone.score)}</span>
                   </button>
-                ))}
-              </div>
-            </div>
+                </li>
+              ))}
+            </ul>
           </article>
 
-          <article className="surface health-surface">
-            <div className="surface-header">
+          <article className="card card-alerts">
+            <header className="card-header">
               <div>
-                <span className="section-label">
-                  <Icon name="chart" /> Comparison
-                </span>
-                <h2>District health</h2>
+                <div className="card-eyebrow"><Icon name="alert" /> Events</div>
+                <h2 className="card-title">Live alert stream</h2>
               </div>
-            </div>
-
-            <div className="mini-chart" aria-label="Horizontal bar chart of district health" role="img">
-              <Bar
-                data={healthData}
-                options={{
-                  indexAxis: "y",
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: { legend: { display: false } },
-                  scales: {
-                    x: {
-                      beginAtZero: true,
-                      max: 100,
-                      ticks: { color: "#64748b", font: { size: 11 } },
-                      grid: { color: "rgba(100, 116, 139, 0.16)" }
-                    },
-                    y: {
-                      ticks: { color: "#334155", font: { size: 11, weight: 700 } },
-                      grid: { display: false }
-                    }
-                  }
-                }}
-              />
-            </div>
+              <span className="card-meta mono">{activeAlerts.length}</span>
+            </header>
+            <ul className="alert-list">
+              {loadStatus === "loading" && <li className="empty">Loading…</li>}
+              {loadStatus !== "loading" && activeAlerts.length === 0 && (
+                <li className="empty"><Icon name="check" /> No threshold breaches in scope.</li>
+              )}
+              {activeAlerts.map((alert, i) => {
+                const zone = zoneById.get(alert.zoneId);
+                return (
+                  <li
+                    key={`${alert.recordedAt}-${i}`}
+                    className={`alert-item alert-${alert.severity}`}
+                  >
+                    <span className="alert-bar" aria-hidden="true" />
+                    <div className="alert-main">
+                      <div className="alert-top">
+                        <span className={`pill pill-${alert.severity === "critical" ? "critical" : "warning"}`}>
+                          {alert.severity}
+                        </span>
+                        <span className="alert-zone">{zone?.name || alert.zoneId}</span>
+                        <time className="alert-time mono">{timeAgo(alert.recordedAt)}</time>
+                      </div>
+                      <div className="alert-msg">{alert.message}</div>
+                      <div className="alert-vals mono">
+                        {formatValue(alert.value)} {metricUnits[alert.metric] || ""}
+                        <span className="dot" />
+                        limit {formatValue(alert.threshold)}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           </article>
 
-          <article className="surface matrix-surface" id="matrix">
-            <div className="surface-header">
+          <article className="card card-matrix">
+            <header className="card-header">
               <div>
-                <span className="section-label">
-                  <Icon name="table" /> Data matrix
-                </span>
-                <h2>Threshold heat map</h2>
+                <div className="card-eyebrow"><Icon name="pulse" /> Matrix</div>
+                <h2 className="card-title">Threshold heatmap</h2>
               </div>
-            </div>
-
-            <div className="matrix-table" role="region" aria-label="Threshold heat map table" tabIndex="0">
-              <table>
+              <span className="card-meta">All cities · all signals</span>
+            </header>
+            <div className="matrix-frame">
+              <table className="matrix-table">
                 <thead>
                   <tr>
-                    <th>District</th>
-                    {Object.keys(metricLabels).map((metric) => (
-                      <th key={metric}>{metricMeta[metric].label}</th>
+                    <th>City</th>
+                    {Object.entries(metricLabels).map(([k, v]) => (
+                      <th key={k}>{v}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {zoneSnapshots.map((zone) => (
                     <tr key={zone.id}>
-                      <th scope="row">{zone.name}</th>
-                      {Object.keys(metricLabels).map((metric) => {
-                        const reading = latestByZoneMetric.get(`${zone.id}:${metric}`);
-                        const threshold = zone.thresholds?.[metric];
-                        const status = ratioStatus(reading?.value / threshold);
+                      <th scope="row">
+                        <button
+                          type="button"
+                          className="matrix-zone"
+                          onClick={() => setSelectedZone(zone.id === selectedZone ? "all" : zone.id)}
+                        >
+                          {zone.name}
+                        </button>
+                      </th>
+                      {Object.keys(metricLabels).map((m) => {
+                        const r = latestByZoneMetric.get(`${zone.id}:${m}`);
+                        const t = zone.thresholds?.[m];
+                        const tone = ratioTone(r?.value / t);
+                        const pct = r && t ? Math.round((r.value / t) * 100) : 0;
                         return (
-                          <td className={`heat-cell ${status.tone}`} key={metric}>
-                            <strong>{formatValue(reading?.value)}</strong>
-                            <span>{status.label}</span>
+                          <td key={m} className={`heat-cell heat-${tone}`}>
+                            <div className="heat-value mono">{formatValue(r?.value)}</div>
+                            <div className="heat-bar"><span style={{ width: `${Math.min(160, pct)}%` }} /></div>
                           </td>
                         );
                       })}
@@ -918,40 +868,19 @@ function App() {
               </table>
             </div>
           </article>
-
-          <article className="surface events-surface" id="events">
-            <div className="surface-header">
-              <div>
-                <span className="section-label">
-                  <Icon name="alert" /> Events
-                </span>
-                <h2>Response timeline</h2>
-              </div>
-              <span className="event-count">{activeAlerts.length} events</span>
-            </div>
-
-            <div className="event-list">
-              {loadStatus === "loading" && <div className="loading-panel">Loading alert feed...</div>}
-              {loadStatus !== "loading" && activeAlerts.length === 0 && (
-                <p className="empty-state">No threshold breaches in the current scope.</p>
-              )}
-              {activeAlerts.slice(0, 8).map((alert, index) => {
-                const zone = zoneById.get(alert.zoneId);
-                return (
-                  <article className={`event-row ${alert.severity}`} key={`${alert.recordedAt}-${index}`}>
-                    <span aria-hidden="true" />
-                    <div>
-                      <strong>{alert.severity}</strong>
-                      <p>{alert.message}</p>
-                      <small>{zone?.name || alert.zoneId}</small>
-                    </div>
-                    <time>{timeLabel(alert.recordedAt)}</time>
-                  </article>
-                );
-              })}
-            </div>
-          </article>
         </section>
+
+        <footer className="footer">
+          <div>
+            <span className="footer-brand">UrbanSignal</span>
+            <span className="footer-sep">·</span>
+            <span>{zones.length || 8} cities · {totalSensors} sensors · {rangeFullLabels[range]}</span>
+          </div>
+          <div className="footer-links">
+            <a href={`${API_BASE}/api/reports/compliance?${reportQuery}`} target="_blank" rel="noreferrer">JSON report</a>
+            <a href={`${API_BASE}/api/reports/compliance.csv?${reportQuery}`}>CSV report</a>
+          </div>
+        </footer>
       </main>
     </div>
   );

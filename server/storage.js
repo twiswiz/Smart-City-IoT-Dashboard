@@ -8,6 +8,8 @@ const memory = {
   zones: [...zones]
 };
 
+const validZoneIds = new Set(zones.map((zone) => zone.id));
+
 let mongoReady = false;
 
 export async function initStorage(mongoUri) {
@@ -16,6 +18,7 @@ export async function initStorage(mongoUri) {
   try {
     await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 2500 });
     mongoReady = true;
+    await purgeLegacyData();
     await seedZones();
     return { mode: "mongodb" };
   } catch (error) {
@@ -25,10 +28,93 @@ export async function initStorage(mongoUri) {
   }
 }
 
+// Drop any data from previous schema versions (old zone ids like
+// `central`, `north`, `south`, `east`, `west`, etc.). This keeps the
+// dashboard, reports, and city pickers consistent with the current
+// 8-city Indian metro roster.
+async function purgeLegacyData() {
+  const allowed = Array.from(validZoneIds);
+  const filter = { zoneId: { $nin: allowed } };
+  const [readingsResult, alertsResult, zonesResult] = await Promise.all([
+    Reading.deleteMany(filter),
+    Alert.deleteMany(filter),
+    ZoneConfig.deleteMany({ id: { $nin: allowed } })
+  ]);
+  const purged =
+    (readingsResult.deletedCount || 0) +
+    (alertsResult.deletedCount || 0) +
+    (zonesResult.deletedCount || 0);
+  if (purged > 0) {
+    console.log(
+      `Purged legacy data: ${readingsResult.deletedCount || 0} readings, ` +
+        `${alertsResult.deletedCount || 0} alerts, ` +
+        `${zonesResult.deletedCount || 0} zones.`
+    );
+  }
+}
+
 async function seedZones() {
   for (const zone of zones) {
     await ZoneConfig.updateOne({ id: zone.id }, { $set: zone }, { upsert: true });
   }
+}
+
+// Used by the history seeder to decide whether to backfill. Returns
+// `{ count, earliest }` for the last `days` days where `earliest` is
+// the timestamp of the oldest reading within that window (or null if
+// the window has no data).
+export async function countRecentReadings(days = 7) {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  if (mongoReady) {
+    const [count, oldest] = await Promise.all([
+      Reading.countDocuments({ recordedAt: { $gte: since } }),
+      Reading.findOne({ recordedAt: { $gte: since } })
+        .sort({ recordedAt: 1 })
+        .select({ recordedAt: 1 })
+        .lean()
+    ]);
+    return { count, earliest: oldest?.recordedAt || null };
+  }
+  const inWindow = memory.readings.filter((reading) => reading.recordedAt >= since);
+  const earliest = inWindow.reduce((min, reading) => {
+    if (!min) return reading.recordedAt;
+    return reading.recordedAt < min ? reading.recordedAt : min;
+  }, null);
+  return { count: inWindow.length, earliest };
+}
+
+// Wipe ALL readings + alerts. Used by SEED_HISTORY_FORCE=true to
+// rebuild history from scratch when simulator math has changed.
+export async function purgeAllReadings() {
+  if (mongoReady) {
+    const [r, a] = await Promise.all([
+      Reading.deleteMany({}),
+      Alert.deleteMany({})
+    ]);
+    console.log(
+      `Purged all readings (${r.deletedCount}) and alerts (${a.deletedCount}).`
+    );
+    return;
+  }
+  memory.readings = [];
+  memory.alerts = [];
+}
+
+// Bulk insert path for history seeding to avoid one round-trip per row.
+export async function bulkSaveReadings(readings) {  if (!readings.length) return 0;
+  const normalized = readings.map((reading) => ({
+    ...reading,
+    recordedAt: new Date(reading.recordedAt || Date.now())
+  }));
+  if (mongoReady) {
+    await Reading.insertMany(normalized, { ordered: false });
+    return normalized.length;
+  }
+  for (const reading of normalized) memory.readings.push(reading);
+  if (memory.readings.length > 500_000) {
+    memory.readings = memory.readings.slice(-500_000);
+  }
+  return normalized.length;
 }
 
 function parseRange(range = "24h") {
@@ -44,7 +130,9 @@ export async function saveReading(reading) {
     return Reading.create(normalized);
   }
   memory.readings.push(normalized);
-  memory.readings = memory.readings.slice(-8000);
+  if (memory.readings.length > 500_000) {
+    memory.readings = memory.readings.slice(-500_000);
+  }
   return normalized;
 }
 
@@ -74,7 +162,9 @@ export async function saveAlert(alert) {
     return Alert.create(normalized);
   }
   memory.alerts.unshift(normalized);
-  memory.alerts = memory.alerts.slice(0, 300);
+  if (memory.alerts.length > 5000) {
+    memory.alerts = memory.alerts.slice(0, 5000);
+  }
   return normalized;
 }
 

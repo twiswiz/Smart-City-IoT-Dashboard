@@ -4,7 +4,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Zone Summary</title>
+    <title>City Summary</title>
     <style>
       body {
         margin: 0;
@@ -62,8 +62,8 @@
   <body>
     <header>
       <div>
-        <h1>Zone Summary Printout</h1>
-        <p>Zone: <%= request.getParameter("zoneId") != null ? request.getParameter("zoneId") : "central" %></p>
+        <h1>City Summary Printout</h1>
+        <p>City: <%= request.getParameter("zoneId") != null ? request.getParameter("zoneId") : "delhi" %></p>
       </div>
       <p>Generated: <%= LocalDateTime.now() %></p>
     </header>

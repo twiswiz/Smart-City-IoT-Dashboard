@@ -38,6 +38,8 @@ const zoneConfigSchema = new mongoose.Schema(
     id: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     type: { type: String, required: true },
+    state: String,
+    timezone: String,
     population: Number,
     color: String,
     position: {

@@ -27,7 +27,14 @@ export const config = {
   port: Number(process.env.PORT || 4000),
   clientOrigin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
   mongoUri: process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/smart_city_iot",
+  dataSource: process.env.DATA_SOURCE || "simulator",
+  datasetPath: process.env.DATASET_PATH || "server/data/readings.csv",
+  datasetReplayIntervalMs: Number(process.env.DATASET_REPLAY_INTERVAL_MS || 5000),
+  datasetLoop: process.env.DATASET_LOOP !== "false",
   mqttBrokerUrl: process.env.MQTT_BROKER_URL || "",
   mqttTopic: process.env.MQTT_TOPIC || "smart-city-iot-dashboard/readings",
-  simulationIntervalMs: Number(process.env.SIMULATION_INTERVAL_MS || 60_000)
+  simulationIntervalMs: Number(process.env.SIMULATION_INTERVAL_MS || 15_000),
+  seedHistoryDays: Number(process.env.SEED_HISTORY_DAYS ?? 7),
+  seedHistoryStepMinutes: Number(process.env.SEED_HISTORY_STEP_MINUTES ?? 10),
+  seedHistoryForce: process.env.SEED_HISTORY_FORCE === "true"
 };

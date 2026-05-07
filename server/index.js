@@ -3,8 +3,10 @@ import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import { config } from "./config.js";
+import { startDatasetPlayer } from "./datasetPlayer.js";
 import { startMqttClient } from "./mqttClient.js";
 import { createRoutes } from "./routes.js";
+import { seedHistory } from "./seedHistory.js";
 import { startSimulator } from "./simulator.js";
 import { initStorage } from "./storage.js";
 
@@ -26,7 +28,13 @@ const { router, ingest } = createRoutes(io);
 app.use("/api", router);
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, storage: storage.mode, timestamp: new Date().toISOString() });
+  res.json({
+    ok: true,
+    storage: storage.mode,
+    dataSource: config.dataSource,
+    datasetPath: config.dataSource === "dataset" ? config.datasetPath : null,
+    timestamp: new Date().toISOString()
+  });
 });
 
 app.use((error, _req, res, _next) => {
@@ -44,12 +52,39 @@ startMqttClient({
   onReading: ingest
 });
 
-startSimulator({
-  intervalMs: config.simulationIntervalMs,
-  onReading: ingest
-});
+if (config.dataSource === "dataset") {
+  startDatasetPlayer({
+    datasetPath: config.datasetPath,
+    intervalMs: config.datasetReplayIntervalMs,
+    loop: config.datasetLoop,
+    onReading: ingest
+  });
+} else {
+  if (config.seedHistoryDays > 0) {
+    console.log(
+      `Seeding ${config.seedHistoryDays}d of synthetic history at ${config.seedHistoryStepMinutes}-min granularity (storage: ${storage.mode})...`
+    );
+    const summary = await seedHistory({
+      days: config.seedHistoryDays,
+      stepMinutes: config.seedHistoryStepMinutes,
+      force: config.seedHistoryForce
+    });
+    if (summary.skipped) {
+      console.log(`History seed skipped: ${summary.existing} readings already present.`);
+    } else {
+      console.log(
+        `History seed complete: ${summary.inserted} readings, ${summary.alerts} alerts.`
+      );
+    }
+  }
+  startSimulator({
+    intervalMs: config.simulationIntervalMs,
+    onReading: ingest
+  });
+}
 
 server.listen(config.port, () => {
   console.log(`Smart City API running on http://localhost:${config.port}`);
   console.log(`Storage mode: ${storage.mode}`);
+  console.log(`Data source: ${config.dataSource}`);
 });

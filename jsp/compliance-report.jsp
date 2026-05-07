@@ -69,20 +69,21 @@
     <header>
       <h1>Smart City Compliance Report</h1>
       <p>Generated: <%= LocalDateTime.now() %></p>
-      <p>Zone: <%= request.getParameter("zoneId") != null ? request.getParameter("zoneId") : "All Zones" %></p>
+      <p>City: <%= request.getParameter("zoneId") != null ? request.getParameter("zoneId") : "All Cities" %></p>
       <p>Period: <%= request.getParameter("range") != null ? request.getParameter("range") : "7d" %></p>
     </header>
 
     <section>
       <h2>Official Summary</h2>
       <p>
-        This printable submission summarizes sensor readings, threshold alerts, and compliance status for city
-        operations. Populate the rows from the Express report endpoint before final submission.
+        This printable submission summarizes sensor readings, threshold alerts, and compliance status for the
+        monitored Indian metros (Delhi, Mumbai, Bengaluru, Chennai, Kolkata, Hyderabad, Pune, Ahmedabad). Populate
+        the rows from the Express report endpoint before final submission to CPCB / municipal authorities.
       </p>
       <table>
         <thead>
           <tr>
-            <th>Zone</th>
+            <th>City</th>
             <th>Metric</th>
             <th>Average</th>
             <th>Maximum</th>
