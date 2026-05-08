@@ -2,13 +2,12 @@ import { metricLabels, metricUnits, zones } from "./data/zones.js";
 import { saveAlert } from "./storage.js";
 
 const zoneById = new Map(zones.map((zone) => [zone.id, zone]));
-const recentAlertKeys = new Map(); // key -> last reading-time (ms epoch)
+const recentAlertKeys = new Map(); // key -> last live alert wall-clock time (ms epoch)
 
 // Dedup window: at most one alert per (zone, metric, severity) per
-// 30 min of *reading time*. Using reading time (not wall clock) means
-// seeded historical readings dedup correctly across the past 7 days,
-// while live readings still respect a sensible cooldown.
-const DEDUP_WINDOW_MS = 30 * 60_000;
+// minute. Historical seeding has its own dedup logic in seedHistory.js;
+// live/demo notifications should appear frequently enough to be visible.
+const DEDUP_WINDOW_MS = 60_000;
 
 export async function evaluateReading(reading, { suppressDeduplication = false } = {}) {
   const zone = zoneById.get(reading.zoneId);
@@ -18,12 +17,12 @@ export async function evaluateReading(reading, { suppressDeduplication = false }
   const ratio = reading.value / threshold;
   const severity = ratio >= 1.25 ? "critical" : "warning";
   const key = `${reading.zoneId}:${reading.metric}:${severity}`;
-  const readingTime = new Date(reading.recordedAt || Date.now()).getTime();
 
   if (!suppressDeduplication) {
     const lastAt = recentAlertKeys.get(key) || 0;
-    if (readingTime - lastAt < DEDUP_WINDOW_MS) return null;
-    recentAlertKeys.set(key, readingTime);
+    const now = Date.now();
+    if (now - lastAt < DEDUP_WINDOW_MS) return null;
+    recentAlertKeys.set(key, now);
   }
 
   const label = metricLabels[reading.metric] || reading.metric;

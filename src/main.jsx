@@ -68,6 +68,8 @@ const rangeOptions = [
 ];
 
 const rangeFullLabels = { "1h": "Last hour", "24h": "Last 24 hours", "7d": "Last 7 days" };
+const readingLimitsByRange = { "1h": 12000, "24h": 80000, "7d": 450000 };
+const maxCachedReadings = readingLimitsByRange["7d"];
 
 const iconPaths = {
   alert: (
@@ -154,6 +156,46 @@ function formatValue(value) {
 
 function timeLabel(date) {
   return new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function minuteKey(date) {
+  const value = new Date(date);
+  value.setSeconds(0, 0);
+  return value.toISOString();
+}
+
+function averageMinuteReadings(readings) {
+  const grouped = new Map();
+
+  readings.forEach((reading) => {
+    const key = minuteKey(reading.recordedAt);
+    const item = grouped.get(key) || {
+      recordedAt: key,
+      total: 0,
+      count: 0,
+      zoneIds: new Set(),
+      sensorIds: new Set(),
+      metric: reading.metric,
+      unit: reading.unit,
+      source: reading.source
+    };
+
+    item.total += reading.value;
+    item.count += 1;
+    item.zoneIds.add(reading.zoneId);
+    item.sensorIds.add(reading.sensorId);
+    grouped.set(key, item);
+  });
+
+  return [...grouped.values()].map((item) => ({
+    recordedAt: item.recordedAt,
+    sensorId: item.sensorIds.size === 1 ? [...item.sensorIds][0] : `${item.sensorIds.size} sensors`,
+    zoneId: item.zoneIds.size === 1 ? [...item.zoneIds][0] : "all",
+    metric: item.metric,
+    value: Number((item.total / item.count).toFixed(2)),
+    unit: item.unit,
+    source: item.source
+  }));
 }
 
 function timeAgo(date) {
@@ -254,9 +296,10 @@ function App() {
       setLoadError("");
 
       try {
+        const readingLimit = readingLimitsByRange[range] || 80000;
         const [zoneData, readingData, alertData] = await Promise.all([
           getJson("/api/zones"),
-          getJson(`/api/readings?range=${range}&limit=4000`),
+          getJson(`/api/readings?range=${range}&limit=${readingLimit}`),
           getJson(`/api/alerts?range=${range}&limit=200`)
         ]);
 
@@ -264,6 +307,7 @@ function App() {
         setZones(zoneData);
         setReadings(readingData.reverse());
         setAlerts(alertData);
+        setLatestAlert((current) => current || alertData[0] || null);
         setLoadStatus("ready");
       } catch (error) {
         if (!active) return;
@@ -283,7 +327,7 @@ function App() {
 
   useEffect(() => {
     const handleReading = (reading) => {
-      setReadings((current) => [...current.slice(-4999), reading]);
+      setReadings((current) => [...current, reading].slice(-maxCachedReadings));
     };
     const handleAlert = (alert) => {
       setAlerts((current) => [alert, ...current.slice(0, 199)]);
@@ -355,8 +399,13 @@ function App() {
   }, [activeZone, zones]);
 
   const selectedMetricReadings = useMemo(
-    () => scopedReadings.filter((r) => r.metric === selectedMetric).slice(-110),
+    () => scopedReadings.filter((r) => r.metric === selectedMetric),
     [scopedReadings, selectedMetric]
+  );
+
+  const chartMetricReadings = useMemo(
+    () => averageMinuteReadings(selectedMetricReadings),
+    [selectedMetricReadings]
   );
 
   const activeAlerts = useMemo(
@@ -414,7 +463,7 @@ function App() {
 
   const selectedSnapshot = metricSnapshots.find((s) => s.metric === selectedMetric) || metricSnapshots[0];
   const selectedThresholdValue = selectedSnapshot?.threshold;
-  const breachCount = selectedMetricReadings.filter((r) => {
+  const breachCount = chartMetricReadings.filter((r) => {
     const t = activeZone?.thresholds?.[selectedMetric] || zoneById.get(r.zoneId)?.thresholds?.[selectedMetric] || selectedThresholdValue;
     return t && r.value > t;
   }).length;
@@ -433,11 +482,11 @@ function App() {
   const activeColor = metricColors[selectedMetric];
 
   const lineData = {
-    labels: selectedMetricReadings.map((r) => timeLabel(r.recordedAt)),
+    labels: chartMetricReadings.map((r) => timeLabel(r.recordedAt)),
     datasets: [
       {
         label: metricLabels[selectedMetric],
-        data: selectedMetricReadings.map((r) => r.value),
+        data: chartMetricReadings.map((r) => r.value),
         borderColor: activeColor,
         backgroundColor: (context) => {
           const { chart } = context;
@@ -459,7 +508,7 @@ function App() {
         ? [
             {
               label: "Threshold",
-              data: selectedMetricReadings.map(() => selectedThresholdValue),
+              data: chartMetricReadings.map(() => selectedThresholdValue),
               borderColor: "#64748b",
               borderDash: [6, 4],
               pointRadius: 0,
@@ -737,7 +786,7 @@ function App() {
             </header>
             <div className="chart-frame">
               {loadStatus === "loading" && <div className="state-overlay"><div className="skeleton-bar" /></div>}
-              {loadStatus !== "loading" && selectedMetricReadings.length === 0 && (
+              {loadStatus !== "loading" && chartMetricReadings.length === 0 && (
                 <div className="state-overlay empty">No readings in this scope.</div>
               )}
               <Line data={lineData} options={chartOptions} />
