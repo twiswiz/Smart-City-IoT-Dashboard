@@ -20,11 +20,11 @@ export const zones = [
     color: "#ef4444",
     position: { x: 46, y: 22 },
     thresholds: {
-      trafficFlow: 1100,
-      pm25: 90,
-      electricityKw: 7400,
-      waterLitres: 240000,
-      noiseDb: 78
+      trafficFlow: 1850,
+      pm25: 260,
+      electricityKw: 9200,
+      waterLitres: 245000,
+      noiseDb: 98
     }
   },
   {
@@ -37,11 +37,11 @@ export const zones = [
     color: "#0ea5e9",
     position: { x: 22, y: 60 },
     thresholds: {
-      trafficFlow: 1250,
-      pm25: 65,
-      electricityKw: 6900,
-      waterLitres: 285000,
-      noiseDb: 82
+      trafficFlow: 1850,
+      pm25: 125,
+      electricityKw: 9200,
+      waterLitres: 330000,
+      noiseDb: 102
     }
   },
   {
@@ -54,11 +54,11 @@ export const zones = [
     color: "#16a34a",
     position: { x: 44, y: 80 },
     thresholds: {
-      trafficFlow: 980,
-      pm25: 55,
-      electricityKw: 5800,
-      waterLitres: 175000,
-      noiseDb: 74
+      trafficFlow: 1850,
+      pm25: 108,
+      electricityKw: 9200,
+      waterLitres: 215000,
+      noiseDb: 100
     }
   },
   {
@@ -71,11 +71,11 @@ export const zones = [
     color: "#7c3aed",
     position: { x: 56, y: 84 },
     thresholds: {
-      trafficFlow: 820,
-      pm25: 55,
-      electricityKw: 5400,
-      waterLitres: 198000,
-      noiseDb: 73
+      trafficFlow: 1820,
+      pm25: 100,
+      electricityKw: 9200,
+      waterLitres: 330000,
+      noiseDb: 88
     }
   },
   {
@@ -88,11 +88,11 @@ export const zones = [
     color: "#f59e0b",
     position: { x: 78, y: 42 },
     thresholds: {
-      trafficFlow: 760,
-      pm25: 75,
-      electricityKw: 4600,
-      waterLitres: 168000,
-      noiseDb: 76
+      trafficFlow: 1700,
+      pm25: 180,
+      electricityKw: 7800,
+      waterLitres: 300000,
+      noiseDb: 100
     }
   },
   {
@@ -105,11 +105,11 @@ export const zones = [
     color: "#0891b2",
     position: { x: 50, y: 64 },
     thresholds: {
-      trafficFlow: 880,
-      pm25: 60,
-      electricityKw: 5400,
-      waterLitres: 165000,
-      noiseDb: 72
+      trafficFlow: 1780,
+      pm25: 120,
+      electricityKw: 9200,
+      waterLitres: 225000,
+      noiseDb: 94
     }
   },
   {
@@ -122,11 +122,11 @@ export const zones = [
     color: "#db2777",
     position: { x: 27, y: 64 },
     thresholds: {
-      trafficFlow: 780,
-      pm25: 60,
-      electricityKw: 4100,
-      waterLitres: 138000,
-      noiseDb: 72
+      trafficFlow: 1780,
+      pm25: 108,
+      electricityKw: 9000,
+      waterLitres: 260000,
+      noiseDb: 84
     }
   },
   {
@@ -139,11 +139,11 @@ export const zones = [
     color: "#ca8a04",
     position: { x: 24, y: 42 },
     thresholds: {
-      trafficFlow: 720,
-      pm25: 70,
-      electricityKw: 5100,
-      waterLitres: 142000,
-      noiseDb: 75
+      trafficFlow: 1650,
+      pm25: 165,
+      electricityKw: 9200,
+      waterLitres: 155000,
+      noiseDb: 90
     }
   }
 ];
